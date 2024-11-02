@@ -1,9 +1,8 @@
 
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from './config/Firebase';
-import { collection, getDocs, onSnapshot, doc, addDoc } from 'firebase/firestore';
+import { collection, getDocs, onSnapshot, doc, addDoc, deleteDoc } from 'firebase/firestore';
 
 const Setapp = () => {
   const navo = useNavigate();
@@ -35,10 +34,9 @@ const Setapp = () => {
   // Fetch appointments for the selected doctor
   useEffect(() => {
     if (selectedDoctor) {
-      const unsubscribe = onSnapshot(doc(db, 'DoctorID', selectedDoctor.id), (docSnapshot) => {
-        if (docSnapshot.exists()) {
-          setAppointments(docSnapshot.data().appointments || []);
-        }
+      const unsubscribe = onSnapshot(collection(db, 'DoctorID', selectedDoctor.id, 'appointments'), (snapshot) => {
+        const appointmentsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        setAppointments(appointmentsData);
       });
 
       return () => unsubscribe();
@@ -57,12 +55,38 @@ const Setapp = () => {
         const doctorRef = doc(db, 'DoctorID', selectedDoctor.id);
         await addDoc(collection(doctorRef, 'appointments'), newAppointment);
         setNewAppointment({ title: '', patientId: '', note: '', date: '' });
-        alert('Appointment added successfully!'); // User feedback
+        alert('Appointment added successfully!');
       } catch (error) {
         console.error("Error adding appointment: ", error);
       }
     } else {
       alert('Please fill in all required fields');
+    }
+  };
+
+  const handleDeleteAppointment = async (appointmentId) => {
+    try {
+      await deleteDoc(doc(db, 'DoctorID', selectedDoctor.id, 'appointments', appointmentId));
+      setAppointments((prevAppointments) =>
+        prevAppointments.filter((appointment) => appointment.id !== appointmentId)
+      );
+      alert('Appointment deleted successfully!');
+    } catch (error) {
+      console.error("Error deleting appointment: ", error);
+    }
+  };
+
+  const handleDeleteDoctor = async (doctorId) => {
+    try {
+      await deleteDoc(doc(db, 'DoctorID', doctorId));
+      setDoctors((prevDoctors) => prevDoctors.filter((doctor) => doctor.id !== doctorId));
+      if (selectedDoctor && selectedDoctor.id === doctorId) {
+        setSelectedDoctor(null);
+        setAppointments([]);
+      }
+      alert('Doctor deleted successfully!');
+    } catch (error) {
+      console.error("Error deleting doctor: ", error);
     }
   };
 
@@ -83,6 +107,19 @@ const Setapp = () => {
             </option>
           ))}
         </select>
+        <ul className="mt-2">
+          {doctors.map((doctor) => (
+            <li key={doctor.id} className="flex justify-between items-center">
+              <span>{doctor.name} - {doctor.specialization}</span>
+              <button
+                onClick={() => handleDeleteDoctor(doctor.id)}
+                className="ml-4 text-red-500 hover:text-red-700"
+              >
+                Delete
+              </button>
+            </li>
+          ))}
+        </ul>
       </div>
 
       {selectedDoctor && (
@@ -94,14 +131,20 @@ const Setapp = () => {
           <p><strong>Available:</strong> {selectedDoctor.available ? 'Yes' : 'No'}</p>
 
           <div className="mt-4">
-            <h4 className="text-lg font-semibold mb-2 text-white">Appointments:</h4>
+            <h4 className="text-lg font-semibold mb-2 text-green-900">Appointments:</h4>
             <ul className="list-disc pl-5">
-              {appointments.map((appointment, index) => (
-                <li key={index}>
+              {appointments.map((appointment) => (
+                <li key={appointment.id}>
                   <strong>Title:</strong> {appointment.title}, 
                   <strong> Patient ID:</strong> {appointment.patientId}, 
                   <strong> Note:</strong> {appointment.note}, 
                   <strong> Date:</strong> {appointment.date}
+                  <button
+                    onClick={() => handleDeleteAppointment(appointment.id)}
+                    className="ml-4 text-red-500 hover:text-red-700"
+                  >
+                    Delete
+                  </button>
                 </li>
               ))}
             </ul>
@@ -109,48 +152,8 @@ const Setapp = () => {
         </div>
       )}
 
-      <form onSubmit={handleAddAppointment} className="w-full max-w-lg bg-green-100 shadow-md rounded-lg p-6 mb-6">
-        <h3 className="text-lg font-semibold mb-4">Add New Appointment</h3>
-        <input
-          type="text"
-          value={newAppointment.title}
-          onChange={(e) => setNewAppointment({ ...newAppointment, title: e.target.value })}
-          placeholder="Appointment Title"
-          className="w-full mb-4 p-2 border rounded"
-          required
-        />
-        <input
-          type="text"
-          value={newAppointment.patientId}
-          onChange={(e) => setNewAppointment({ ...newAppointment, patientId: e.target.value })}
-          placeholder="Patient ID"
-          className="w-full mb-4 p-2 border rounded"
-          required
-        />
-        <input
-          type="text"
-          value={newAppointment.note}
-          onChange={(e) => setNewAppointment({ ...newAppointment, note: e.target.value })}
-          placeholder="Note"
-          className="w-full mb-4 p-2 border rounded"
-        />
-        <input
-          type="date"
-          value={newAppointment.date}
-          onChange={(e) => setNewAppointment({ ...newAppointment, date: e.target.value })}
-          className="w-full mb-4 p-2 border rounded"
-          required
-        />
-        <button
-          type="submit"
-          className="w-full py-2 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-md transition duration-300"
-        >
-          Add Appointment
-        </button>
-      </form>
-
       <button 
-        onClick={() => navo('/ap')} 
+        onClick={() => navo('/showapp')} 
         className="mt-4 py-2 px-4 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-md transition duration-300"
       >
         Appointments
@@ -161,3 +164,8 @@ const Setapp = () => {
 
 export default Setapp;
 
+
+  
+            
+       
+        
