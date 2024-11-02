@@ -71,6 +71,7 @@ function Nav() {
         <Link to="/about" className="block p-2 md:inline-block">About Us</Link>
         <Link to="/cards" className="block p-2 md:inline-block">Services</Link>
         <Link to="/contact" className="block p-2 md:inline-block">Contact Us</Link>
+              <Link to="/ap" className="block p-2 md:inline-block">Profile</Link>
         <Link to='/sign'  
           className="block p-2 text-yellow-500 hover:bg-yellow-600 rounded md:inline-block"
         >
