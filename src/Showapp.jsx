@@ -3,9 +3,9 @@ import React, { useState } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import './index.css';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
 import { db } from './config/Firebase';
-import { Link } from 'react-router-dom';  // Import Link here
+import { Link } from 'react-router-dom';
 
 const Showapp = () => {
   const [date, setDate] = useState(new Date());
@@ -13,6 +13,8 @@ const Showapp = () => {
   const [title, setTitle] = useState('');
   const [patientId, setPatientId] = useState('');
   const [note, setNote] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentAppointmentId, setCurrentAppointmentId] = useState(null);
 
   const handleDateChange = (selectedDate) => {
     setDate(selectedDate);
@@ -21,32 +23,59 @@ const Showapp = () => {
   const handleAddAppointment = async (e) => {
     e.preventDefault();
     if (title && patientId && note) {
+      const appointmentData = {
+        title,
+        patientId,
+        note,
+        date: date.toLocaleDateString(),
+      };
+
       try {
-        const appointmentData = {
-          title,
-          patientId,
-          note,
-          date: date.toLocaleDateString(),
-        };
+        if (isEditing) {
+          // Update existing appointment
+          const appointmentRef = doc(db, 'Doctor', currentAppointmentId);
+          await updateDoc(appointmentRef, appointmentData);
 
-        const Book = collection(db, 'Doctor');
-        await addDoc(Book, appointmentData);
+          setAppointments((prev) =>
+            prev.map((appointment) =>
+              appointment.id === currentAppointmentId
+                ? { ...appointment, ...appointmentData }
+                : appointment
+            )
+          );
+          setIsEditing(false);
+          setCurrentAppointmentId(null);
+        } else {
+          // Add new appointment
+          const Book = collection(db, 'Doctor');
+          const docRef = await addDoc(Book, appointmentData);
 
-        setAppointments((prev) => [
-          ...prev,
-          { id: prev.length + 1, ...appointmentData },
-        ]);
+          setAppointments((prev) => [
+            ...prev,
+            { id: docRef.id, ...appointmentData },
+          ]);
+        }
 
+        // Reset form fields
         setTitle('');
         setPatientId('');
         setNote('');
         setDate(new Date());
       } catch (error) {
-        console.error("Error adding appointment: ", error);
+        console.error("Error adding/updating appointment: ", error);
       }
     } else {
       alert('Please fill in all fields');
     }
+  };
+
+  const handleEdit = (appointment) => {
+    setIsEditing(true);
+    setCurrentAppointmentId(appointment.id);
+    setTitle(appointment.title);
+    setPatientId(appointment.patientId);
+    setNote(appointment.note);
+    setDate(new Date(appointment.date));
   };
 
   return (
@@ -96,7 +125,7 @@ const Showapp = () => {
             type="submit"
             className="w-full py-2 text-green-900 bg-green-200 hover:bg-green-400 rounded-md transition duration-300"
           >
-            Add Appointment
+            {isEditing ? 'Update Appointment' : 'Add Appointment'}
           </button>
         </form>
 
@@ -107,6 +136,12 @@ const Showapp = () => {
               {appointments.map((appointment) => (
                 <li key={appointment.id}>
                   <strong>Title:</strong> {appointment.title} | <strong>Patient ID:</strong> {appointment.patientId} | <strong>Note:</strong> {appointment.note} | <strong>Date:</strong> {appointment.date}
+                  <button
+                    onClick={() => handleEdit(appointment)}
+                    className="ml-4 text-blue-500 underline hover:text-blue-700"
+                  >
+                    Edit
+                  </button>
                 </li>
               ))}
             </ul>
@@ -114,7 +149,7 @@ const Showapp = () => {
         )}
       </div>
       <div className="mt-4 text-center">
-        <Link to="/" className="text-blue-600 underline">
+        <Link to="/" className="mt-4 py-2 px-4 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-md transition duration-300">
           Go Back
         </Link>
       </div>
