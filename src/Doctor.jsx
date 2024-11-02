@@ -40,7 +40,7 @@ const Doctor = () => {
       setIsAvailable(true);
       
       alert('Doctor information saved successfully!');
-      navigate('/showapp'); // Navigate after successful submission
+      navigate('/'); // Navigate after successful submission
     } catch (error) {
       console.error("Error saving doctor information: ", error);
     }
